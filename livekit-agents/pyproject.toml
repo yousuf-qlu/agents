@@ -9,7 +9,7 @@ description = "A powerful framework for building realtime voice AI agents"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.9"
-authors = [{ name = "LiveKit", email = "hello@livekit.io" }]
+authors = [{ name = "Yousuf Ahmed", email = "y.siddiqui@qlu.ai" }]
 keywords = ["webrtc", "realtime", "audio", "video", "livekit", "agents", "AI"]
 classifiers = [
     "Intended Audience :: Developers",
