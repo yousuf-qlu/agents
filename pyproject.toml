@@ -1,3 +1,11 @@
+[project]
+name = "livekit-agents"
+version = "1.2.2"
+description = "LiveKit Agents fork with custom modifications"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
 [tool.uv]
 constraint-dependencies = ['onnxruntime<1.20.0; python_version == "3.9"']
 
