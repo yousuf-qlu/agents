@@ -6,6 +6,10 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = []
 
+[tool.setuptools.packages.find]
+include = ["livekit*", "livekit.agents*"]
+namespaces = true
+
 [tool.uv]
 constraint-dependencies = ['onnxruntime<1.20.0; python_version == "3.9"']
 
