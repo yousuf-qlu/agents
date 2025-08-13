@@ -92,6 +92,15 @@ hedra = ["livekit-plugins-hedra>=1.2.2"]
 anam = ["livekit-plugins-anam>=1.2.2"]
 simli = ["livekit-plugins-simli>=1.2.2"]
 
+[tool.hatch.build]
+packages = ["livekit"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["livekit"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [project.urls]
 Documentation = "https://docs.livekit.io"
 Website = "https://livekit.io/"
