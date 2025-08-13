@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "livekit"
+name = "livekit-agents"
 dynamic = ["version"]
 description = "A powerful framework for building realtime voice AI agents"
 readme = "README.md"
@@ -91,15 +91,6 @@ inworld = ["livekit-plugins-inworld>=1.2.2"]
 hedra = ["livekit-plugins-hedra>=1.2.2"]
 anam = ["livekit-plugins-anam>=1.2.2"]
 simli = ["livekit-plugins-simli>=1.2.2"]
-
-[tool.hatch.build]
-packages = ["livekit"]
-
-[tool.hatch.build.targets.wheel]
-packages = ["livekit"]
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [project.urls]
 Documentation = "https://docs.livekit.io"

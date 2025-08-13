@@ -1,15 +1,3 @@
-[project]
-name = "livekit"
-version = "1.2.2"
-description = "LiveKit Agents fork with custom modifications"
-readme = "README.md"
-requires-python = ">=3.9"
-dependencies = []
-
-[tool.setuptools.packages.find]
-include = ["livekit*"]
-namespaces = true
-
 [tool.uv]
 constraint-dependencies = ['onnxruntime<1.20.0; python_version == "3.9"']
 
@@ -54,6 +42,7 @@ livekit-plugins-simli = { workspace = true }
 
 [tool.uv.workspace]
 members = ["livekit-plugins/*", "livekit-agents"]
+exclude = ["livekit-plugins/livekit-plugins-browser", "livekit-plugins/livekit-blingfire"]
 
 [dependency-groups]
 dev = [
