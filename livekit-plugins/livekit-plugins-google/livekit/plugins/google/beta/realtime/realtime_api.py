@@ -313,6 +313,7 @@ class RealtimeSession(llm.RealtimeSession):
         self._chat_ctx = llm.ChatContext.empty()
         self._msg_ch = utils.aio.Chan[ClientEvents]()
         self._input_resampler: rtc.AudioResampler | None = None
+        self._input_modality: types.Modality = types.Modality.AUDIO
 
         # 50ms chunks
         self._bstream = audio_utils.AudioByteStream(
@@ -529,7 +530,11 @@ class RealtimeSession(llm.RealtimeSession):
                     activity_start=types.ActivityStart(),
                 )
             )
-
+            
+    def set_input_modality(self, modality: types.Modality):
+        print(f"😍 Setting input modality to {modality}")
+        self._input_modality = modality
+        
     def interrupt(self) -> None:
         # Gemini Live treats activity start as interruption, so we rely on start_user_activity
         # notifications to handle it
@@ -666,8 +671,12 @@ class RealtimeSession(llm.RealtimeSession):
                     await session.send_tool_response(function_responses=msg.function_responses)
                 elif isinstance(msg, types.LiveClientRealtimeInput):
                     if msg.media_chunks:
-                        for media_chunk in msg.media_chunks:
-                            await session.send_realtime_input(media=media_chunk)
+                        if self._input_modality == types.Modality.TEXT:
+                            for media_chunk in msg.media_chunks:
+                                await session.send_realtime_input(text=media_chunk)
+                        else:
+                            for media_chunk in msg.media_chunks:
+                                await session.send_realtime_input(media=media_chunk)
                     elif msg.activity_start:
                         await session.send_realtime_input(activity_start=msg.activity_start)
                     elif msg.activity_end:
