@@ -1856,18 +1856,17 @@ class AgentActivity(RecognitionHooks):
             )
 
         try:
-            # generation_ev = await self._rt_session.generate_reply(
-            #     instructions=instructions or NOT_GIVEN
-            # )
+            generation_ev = await self._rt_session.generate_reply(
+                instructions=instructions or NOT_GIVEN
+            )
 
-            # # _realtime_generation_task will clear the authorization
-            # await self._realtime_generation_task(
-            #     speech_handle=speech_handle,
-            #     generation_ev=generation_ev,
-            #     model_settings=model_settings,
-            #     instructions=instructions,
-            # )
-            print("aaaa")
+            # _realtime_generation_task will clear the authorization
+            await self._realtime_generation_task(
+                speech_handle=speech_handle,
+                generation_ev=generation_ev,
+                model_settings=model_settings,
+                instructions=instructions,
+            )
         finally:
             # reset tool_choice value
             if (
