@@ -8,6 +8,7 @@ import time
 import weakref
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from typing import Literal
 
 from google import genai
 from google.genai import types
@@ -428,7 +429,9 @@ class RealtimeSession(llm.RealtimeSession):
         self._chat_ctx = chat_ctx.copy()
 
     async def update_tools(self, tools: list[llm.FunctionTool | llm.RawFunctionTool]) -> None:
-        new_declarations: list[types.FunctionDeclaration] = to_fnc_ctx(tools)
+        new_declarations: list[types.FunctionDeclaration] = to_fnc_ctx(
+            tools, use_parameters_json_schema=False
+        )
         current_tool_names = {f.name for f in self._gemini_declarations}
         new_tool_names = {f.name for f in new_declarations}
 
@@ -547,7 +550,12 @@ class RealtimeSession(llm.RealtimeSession):
         self.start_user_activity()
 
     def truncate(
-        self, *, message_id: str, audio_end_ms: int, audio_transcript: NotGivenOr[str] = NOT_GIVEN
+        self,
+        *,
+        message_id: str,
+        modalities: list[Literal["text", "audio"]],
+        audio_end_ms: int,
+        audio_transcript: NotGivenOr[str] = NOT_GIVEN,
     ) -> None:
         logger.warning("truncate is not supported by the Google Realtime API.")
         pass
@@ -702,10 +710,15 @@ class RealtimeSession(llm.RealtimeSession):
                         break
 
                 async for response in session.receive():
-                    if (not self._current_generation or self._current_generation._done) and (
-                        response.server_content or response.tool_call
-                    ):
-                        self._start_new_generation()
+                    if not self._current_generation or self._current_generation._done:
+                        if response.server_content and response.server_content.interrupted:
+                            # interrupt a generation already done
+                            self._handle_input_speech_started()
+                            # reset the flag and still start a new generation in case it has any other content
+                            response.server_content.interrupted = False
+
+                        if self._is_new_generation(response):
+                            self._start_new_generation()
 
                     if response.session_resumption_update:
                         if (
@@ -795,10 +808,6 @@ class RealtimeSession(llm.RealtimeSession):
             logger.warning("starting new generation while another is active. Finalizing previous.")
             self._mark_current_generation_done()
 
-        # emit input_speech_started event before starting a new generation
-        # to interrupt the previous audio playout if any
-        self._handle_input_speech_started()
-
         response_id = utils.shortuuid("GR_")
         self._current_generation = _ResponseGeneration(
             message_ch=utils.aio.Chan[llm.MessageGeneration](),
@@ -812,11 +821,16 @@ class RealtimeSession(llm.RealtimeSession):
         if not self._realtime_model.capabilities.audio_output:
             self._current_generation.audio_ch.close()
 
+        msg_modalities = asyncio.Future[list[Literal["text", "audio"]]]()
+        msg_modalities.set_result(
+            ["audio", "text"] if self._realtime_model.capabilities.audio_output else ["text"]
+        )
         self._current_generation.message_ch.send_nowait(
             llm.MessageGeneration(
                 message_id=response_id,
                 text_stream=self._current_generation.text_ch,
                 audio_stream=self._current_generation.audio_ch,
+                modalities=msg_modalities,
             )
         )
 
@@ -830,6 +844,10 @@ class RealtimeSession(llm.RealtimeSession):
             generation_event.user_initiated = True
             self._pending_generation_fut.set_result(generation_event)
             self._pending_generation_fut = None
+        else:
+            # emit input_speech_started event before starting an agent initiated generation
+            # to interrupt the previous audio playout if any
+            self._handle_input_speech_started()
 
         self.emit("generation_created", generation_event)
 
@@ -945,9 +963,7 @@ class RealtimeSession(llm.RealtimeSession):
     def _handle_input_speech_stopped(self) -> None:
         self.emit(
             "input_speech_stopped",
-            llm.InputSpeechStoppedEvent(
-                user_transcription_enabled=self._realtime_model.capabilities.user_transcription
-            ),
+            llm.InputSpeechStoppedEvent(user_transcription_enabled=False),
         )
 
     def _handle_tool_calls(self, tool_call: types.LiveServerToolCall) -> None:
@@ -1084,3 +1100,16 @@ class RealtimeSession(llm.RealtimeSession):
                 recoverable=recoverable,
             ),
         )
+
+    def _is_new_generation(self, resp: types.LiveServerMessage) -> bool:
+        if resp.tool_call:
+            return True
+
+        if (sc := resp.server_content) and (
+            sc.model_turn
+            or (sc.output_transcription and sc.output_transcription.text is not None)
+            or (sc.input_transcription and sc.input_transcription.text is not None)
+        ):
+            return True
+
+        return False
